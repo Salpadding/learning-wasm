@@ -1,8 +1,34 @@
-pub mod module;
-pub mod primitives;
-
 use std::io;
 use core::fmt;
+
+// 先从 Reader 读到 buffer，再从 buffer 读到 vec
+// 这里 buffer_size 必须是字面量或者常量
+// 这里要把宏定义放在 pub mod module 前面
+macro_rules! buffered_read {
+    ($buffer_size: expr, $length: expr, $reader: expr) => {
+        {
+            let mut v: Vec<u8> = Vec::new();
+            let mut total_read: usize = 0;
+            let mut buf = [0u8; $buffer_size];
+            while total_read < $length {
+                let next_to_read = if $length - total_read > $buffer_size  { $buffer_size } else { $length - total_read };
+                $reader.read(&mut buf[0..next_to_read])?;
+                v.extend_from_slice(&buf[0..next_to_read]);
+                total_read += next_to_read;
+            }
+            v
+        }
+    }
+}
+
+pub mod module;
+pub mod primitives;
+pub mod sections;
+pub mod types;
+pub mod import_entry;
+pub mod func;
+
+
 
 /// Deserialization from serial i/o.
 pub trait Deserialize : Sized {

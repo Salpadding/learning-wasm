@@ -2,6 +2,7 @@ use std::io::{Read, Result, ErrorKind, Error};
 
 pub struct ByteStream<'a> (pub &'a [u8]);
 
+/// io::Read 实现，用于单元测试
 impl Read for ByteStream<'_> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         if self.0.len() == 0 {

@@ -1,12 +1,14 @@
 const WASM_MAGIC_NUMBER: [u8; 4] = [0x00, 0x61, 0x73, 0x6d];
 use super::{Deserialize, Error};
+use super::primitives::Uint32;
+use super::sections::Section;
 use std::io;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Module {
-    magic: u32,
-    version: u32,
-    sections: Vec<u32>
+    pub magic: u32,
+    pub version: u32,
+    pub sections: Vec<Section>,
 }
 
 impl Default for Module {
@@ -25,6 +27,8 @@ impl Deserialize for Module {
 	/// Deserialize type from serial i/o
 	fn deserialize<R: io::Read>(reader: &mut R) -> Result<Module, Error> {
         let mut buf = [0u8; 4];
+
+        // 因为 Error 实现了 From<std::io::Error>，所以可以直接使用 ? 语法糖
         reader.read(&mut buf)?;
 
         if buf != WASM_MAGIC_NUMBER {
@@ -32,6 +36,12 @@ impl Deserialize for Module {
                 Error::InvalidMagic
             );
         }
+
+        let version: u32 = Uint32::deserialize(reader)?.into();
+        if version != 1 {
+            return Err(Error::UnsupportedVersion(version));
+        }
+
 
         Ok(Module::default())
     }
