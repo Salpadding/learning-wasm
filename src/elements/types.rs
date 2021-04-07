@@ -1,5 +1,5 @@
 use super::{Deserialize, Error};
-use super::primitives::{VarInt7, CountedList};
+use super::primitives::{VarInt7, CountedList, VarUint7};
 
 use std::io;
 
@@ -52,7 +52,7 @@ impl Deserialize for FunctionType {
     type Error = Error;
 
 	fn deserialize<R: io::Read>(reader: &mut R) -> Result<FunctionType, Error> {
-        let form: u8 = VarInt7::deserialize(reader)?.into();
+        let form: u8 = VarUint7::deserialize(reader)?.into();
 
         if form != 0x60 {
             return Err(Error::UnknownFunctionForm(form));
@@ -95,4 +95,31 @@ impl Deserialize for TableElementType {
             _ => Err(Error::UnknownTableElementType(val)),
         }
     }   
+}
+
+/// Block type which is basically `ValueType` + NoResult (to define blocks that have no return type)
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum BlockType {
+	/// Value-type specified block type
+	Value(ValueType),
+	/// No specified block type
+	NoResult,
+}
+
+
+impl Deserialize for BlockType {
+	type Error = Error;
+
+	fn deserialize<R: io::Read>(reader: &mut R) -> Result<Self, Self::Error> {
+		let val: i8 = VarInt7::deserialize(reader)?.into();
+
+		match val {
+			-0x01 => Ok(BlockType::Value(ValueType::I32)),
+			-0x02 => Ok(BlockType::Value(ValueType::I64)),
+			-0x03 => Ok(BlockType::Value(ValueType::F32)),
+			-0x04 => Ok(BlockType::Value(ValueType::F64)),
+			-0x40 => Ok(BlockType::NoResult),
+			_ => Err(Error::UnknownValueType(val.into())),
+		}
+	}
 }

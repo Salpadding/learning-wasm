@@ -42,8 +42,21 @@ impl Deserialize for Module {
             return Err(Error::UnsupportedVersion(version));
         }
 
+        let mut sections: Vec<Section> = Vec::new();
 
-        Ok(Module::default())
+        loop {
+            match Section::deserialize(reader) {
+                Err(Error::UnexpectedEof) => break,
+                Err(e) => {
+                    return Err(e);
+                },
+                Ok(s) => sections.push(s),
+            }
+        }
+
+        let mut m = Module::default();
+        m.sections = sections;
+        Ok(m)
     }
 }
 
@@ -51,10 +64,21 @@ impl Deserialize for Module {
 #[cfg(test)]
 mod test {
     use super::*;
-    
+    use std::io;
+    use std::fs;
+    use super::super::print_stream;
+    use crate::io::BufReader;
+
     #[test]
     pub fn test() {
         let _m = Module::default();
+    }
+
+    #[test]
+    pub fn test_parse() {
+        let mut f = fs::File::open("/Users/sal/Documents/Github/maze-protocol/layer2/main.wasm").unwrap();
+        let mut buf = BufReader::new(&mut f);
+        let m = Module::deserialize(&mut buf).unwrap();
     }
 }
 

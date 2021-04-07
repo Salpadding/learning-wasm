@@ -105,7 +105,7 @@ impl Deserialize for ImportEntry {
 }
 
 /// Global definition struct
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GlobalType {
 	pub content_type: ValueType,
 	pub is_mutable: bool,

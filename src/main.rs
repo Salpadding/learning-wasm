@@ -1,6 +1,7 @@
-#[macro_use]
 mod elements;
 mod tests;
+mod io;
+
 use elements::module::Module;
 use std::fmt;
 

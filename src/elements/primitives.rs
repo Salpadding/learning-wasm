@@ -231,6 +231,105 @@ impl Deserialize for VarUint7 {
 	}
 }
 
+/// 64-bit signed integer, encoded in LEB128 (can be 1-9 bytes length).
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct VarInt64(i64);
+
+impl From<VarInt64> for i64 {
+	fn from(v: VarInt64) -> i64 {
+		v.0
+	}
+}
+
+impl From<i64> for VarInt64 {
+	fn from(v: i64) -> VarInt64 {
+		VarInt64(v)
+	}
+}
+
+impl Deserialize for VarInt64 {
+	type Error = Error;
+
+	fn deserialize<R: io::Read>(reader: &mut R) -> Result<Self, Self::Error> {
+		let mut res = 0i64;
+		let mut shift = 0;
+		let mut u8buf = [0u8; 1];
+
+		loop {
+			if shift > 63 { return Err(Error::InvalidVarInt64); }
+			reader.read(&mut u8buf)?;
+			let b = u8buf[0];
+
+			res |= ((b & 0x7f) as i64).checked_shl(shift).ok_or(Error::InvalidVarInt64)?;
+
+			shift += 7;
+			if (b >> 7) == 0 {
+				if shift < 64 && b & 0b0100_0000 == 0b0100_0000 {
+					res |= (1i64 << shift).wrapping_neg();
+				} else if shift >= 64 && b & 0b0100_0000 == 0b0100_0000 {
+					if (b | 0b1000_0000) as i8 != -1 {
+						return Err(Error::InvalidVarInt64);
+					}
+				} else if shift >= 64 && b != 0 {
+					return Err(Error::InvalidVarInt64);
+				}
+				break;
+			}
+		}
+		Ok(VarInt64(res))
+	}
+}
+
+/// 32-bit signed integer, encoded in LEB128 (can be 1-5 bytes length).
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct VarInt32(i32);
+
+impl From<VarInt32> for i32 {
+	fn from(v: VarInt32) -> i32 {
+		v.0
+	}
+}
+
+impl From<i32> for VarInt32 {
+	fn from(v: i32) -> VarInt32 {
+		VarInt32(v)
+	}
+}
+
+impl Deserialize for VarInt32 {
+	type Error = Error;
+
+	fn deserialize<R: io::Read>(reader: &mut R) -> Result<Self, Self::Error> {
+		let mut res = 0;
+		let mut shift = 0;
+		let mut u8buf = [0u8; 1];
+		loop {
+			if shift > 31 { return Err(Error::InvalidVarInt32); }
+			reader.read(&mut u8buf)?;
+			let b = u8buf[0];
+
+			res |= ((b & 0x7f) as i32).checked_shl(shift).ok_or(Error::InvalidVarInt32)?;
+
+			shift += 7;
+			if (b >> 7) == 0 {
+				if shift < 32 && b & 0b0100_0000 == 0b0100_0000 {
+					res |= (1i32 << shift).wrapping_neg();
+				} else if shift >= 32 && b & 0b0100_0000 == 0b0100_0000 {
+					if (!(b | 0b1000_0000)).leading_zeros() < 5 {
+						return Err(Error::InvalidVarInt32);
+					}
+				} else if shift >= 32 && b & 0b0100_0000 == 0 {
+					if b.leading_zeros() < 5 {
+						return Err(Error::InvalidVarInt32);
+					}
+				}
+				break;
+			}
+		}
+		Ok(VarInt32(res))
+	}
+}
+
 #[cfg(test)]
 mod test{
     use crate::tests::ByteStream;
@@ -245,4 +344,30 @@ mod test{
         let u = Uint32::deserialize(&mut stream);
         println!("{:?}", u);
     }
+}
+
+
+/// 64-bit unsigned integer, encoded in little endian.
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct Uint64(u64);
+
+impl Deserialize for Uint64 {
+	type Error = Error;
+
+	fn deserialize<R: io::Read>(reader: &mut R) -> Result<Self, Self::Error> {
+		let mut buf = [0u8; 8];
+		reader.read(&mut buf)?;
+		// todo check range
+		Ok(u64::from_le_bytes(buf).into())
+	}
+}
+
+impl From<u64> for Uint64 {
+	fn from(u: u64) -> Self { Uint64(u) }
+}
+
+impl From<Uint64> for u64 {
+	fn from(var: Uint64) -> u64 {
+		var.0
+	}
 }

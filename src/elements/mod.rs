@@ -27,8 +27,29 @@ pub mod sections;
 pub mod types;
 pub mod import_entry;
 pub mod func;
+pub mod ops;
+pub mod global_entry;
+pub mod segment;
+pub mod export_entry;
 
+pub fn print_stream<R: io::Read>(r: &mut R, max_len: usize) -> io::Result<()> {
+    const BUF_SIZE: usize = 256;
+    let mut buf = [0u8; BUF_SIZE];
+    let mut already_read: usize = 0;
+    while already_read < max_len {
+        let max = if max_len - already_read > BUF_SIZE  { BUF_SIZE } else { max_len - already_read };
+        let slice = &mut buf[0..max_len];
+        r.read(slice)?;
 
+        for i in slice.iter() {
+            print!("{:02x}", i);
+        }
+        
+        already_read += max;
+    }
+
+    Ok(())
+}
 
 /// Deserialization from serial i/o.
 pub trait Deserialize : Sized {
